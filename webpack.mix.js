@@ -12,4 +12,6 @@ const mix = require('laravel-mix');
  */
 
 mix.js('resources/js/app.js', 'public/js')
+    .js('resources/js/three.js', 'public/js')
+    .js('resources/js/workers/encryptDataWorker.js', 'public/js/workers')
     .postCss('resources/css/app.css', 'public/css');
