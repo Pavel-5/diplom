@@ -1,5 +1,7 @@
-import {allProperties, coordinates, propertiesInSeparateTables} from '../config';
+// import {allProperties, coordinates, propertiesInSeparateTables} from '../config';
 import Assembly from "../assembly";
+import Config from "../config/Config";
+import contains from "@popperjs/core/lib/dom-utils/contains";
 
 export default class VisGraph3d {
     data = [];
@@ -7,9 +9,9 @@ export default class VisGraph3d {
     graph = null;
     container = null;
     keys = {
-        x: 'SALES',
-        y: 'PRICEEACH',
-        z: 'QUANTITYORDERED',
+        // x: 'SALES',
+        // y: 'PRICEEACH',
+        // z: 'QUANTITYORDERED',
         style: (x, y, z) => {
             // let color = '';
             // if (y < +new Date('2003-12-31')) {
@@ -30,11 +32,12 @@ export default class VisGraph3d {
 
     options = {
         width:  'auto',
-        height: '100vh',
+        height: '99%',
         style: 'dot-color', //bar, bar-color, bar-size, dot, dot-line, dot-color, dot-size, line, grid, surface
         showPerspective: true,
         showGrid: true,
         showShadow: true,
+        showLegend: false,
         keepAspectRatio: false,
         verticalRatio: 0.5,
         xLabel: 'X',
@@ -115,7 +118,7 @@ export default class VisGraph3d {
                 y = parseInt(item[this.keys.y]),
                 z = parseInt(item[this.keys.z]);
 
-            if (x && y && z) {
+            if ((x || x === 0) && (y || y === 0) && (z || z === 0)) {
                 this.dataSet.add({
                     id: counter++,
                     x: x,
@@ -143,6 +146,7 @@ export default class VisGraph3d {
     }
 
     async setParams(keys, options = {}, data = []) {
+        let config = JSON.parse(localStorage['DIPLOM_CONFIG']);
         let assembly = await Assembly.init();
 
         let formatDate = (value) => {
@@ -165,8 +169,8 @@ export default class VisGraph3d {
 
         let buildOptions = {};
 
-        coordinates.forEach((key) => {
-            if (propertiesInSeparateTables.includes(keys[key])) {
+        config.coordinates.forEach((key) => {
+            if (config.propertiesInSeparateTables.includes(keys[key])) {
                 buildOptions[key + 'Step'] = 1;
                 buildOptions[key + 'ValueLabel'] = (value) => {
                     return assembly.decrypt(
@@ -180,14 +184,14 @@ export default class VisGraph3d {
 
         buildOptions = {
             ...buildOptions,
-            xLabel: allProperties.find((property) => property.value === this.keys.x).title,
-            yLabel: allProperties.find((property) => property.value === this.keys.y).title,
-            zLabel: allProperties.find((property) => property.value === this.keys.z).title,
+            xLabel: this.keys.x,
+            yLabel: this.keys.y,
+            zLabel: this.keys.z,
         };
 
         let tooltip = (point) => {
-            coordinates.forEach((key) => {
-                point[key + 'Value'] = (propertiesInSeparateTables.includes(keys[key]))
+            config.coordinates.forEach((key) => {
+                point[key + 'Value'] = (config.propertiesInSeparateTables.includes(keys[key]))
                     ? assembly.decrypt(
                         JSON.parse(
                             localStorage.getItem(keys[key])

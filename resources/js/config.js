@@ -119,10 +119,14 @@ let propertiesInFilter = [
     'DEALSIZE',
     'ADDRESSLINE1',
 ];
+let propertiesIsDate = [
+    'ORDERDATE',
+];
 
 export {
     allProperties,
     coordinates,
     propertiesInSeparateTables,
     propertiesInFilter,
+    propertiesIsDate,
 }

@@ -1,6 +1,8 @@
 {
     "/js/app.js": "/js/app.js",
-    "/js/three.js": "/js/three.js",
+    "/js/main.js": "/js/main.js",
     "/js/workers/encryptDataWorker.js": "/js/workers/encryptDataWorker.js",
-    "/css/app.css": "/css/app.css"
+    "/js/workers/decryptDataWorker.js": "/js/workers/decryptDataWorker.js",
+    "/css/app.css": "/css/app.css",
+    "/css/main.css": "/css/main.css"
 }
