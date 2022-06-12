@@ -54,7 +54,9 @@
             </div>
             <div class="download-file">
                 <form class="download-form" action="">
-                    <input type="file" name="downloadedFile" accept=".csv">
+{{--                    <input type="file" name="downloadedFile" accept=".csv">--}}
+                    <label for="downloadedFile">Ссылка на файл CSV</label>
+                    <input type="text" name="downloadedFile" required>
 
                     <button class="form-button download-form-submit">Применить</button>
                 </form>

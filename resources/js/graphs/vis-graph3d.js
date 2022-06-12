@@ -145,8 +145,12 @@ export default class VisGraph3d {
         this.graph.redraw();
     }
 
-    async setParams(keys, options = {}, data = []) {
-        let config = JSON.parse(localStorage['DIPLOM_CONFIG']);
+    async setParams(keys, options = {}, data = [], currentObjectData = {}) {
+        if (!currentObjectData) {
+            let keyLocalStorage = localStorage.getItem('currentKey');
+            currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage));
+        }
+        let config = currentObjectData['DIPLOM_CONFIG'];
         let assembly = await Assembly.init();
 
         let formatDate = (value) => {
@@ -173,11 +177,7 @@ export default class VisGraph3d {
             if (config.propertiesInSeparateTables.includes(keys[key])) {
                 buildOptions[key + 'Step'] = 1;
                 buildOptions[key + 'ValueLabel'] = (value) => {
-                    return assembly.decrypt(
-                        JSON.parse(
-                            localStorage.getItem(keys[key])
-                        )[value]
-                    );
+                    return assembly.decrypt(currentObjectData[keys[key]][value]);
                 }
             }
         });
@@ -192,11 +192,7 @@ export default class VisGraph3d {
         let tooltip = (point) => {
             config.coordinates.forEach((key) => {
                 point[key + 'Value'] = (config.propertiesInSeparateTables.includes(keys[key]))
-                    ? assembly.decrypt(
-                        JSON.parse(
-                            localStorage.getItem(keys[key])
-                        )[point[key]]
-                    )
+                    ? assembly.decrypt(currentObjectData[keys[key]][point[key]])
                     : point[key];
             });
 

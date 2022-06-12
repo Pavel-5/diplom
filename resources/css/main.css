@@ -49,13 +49,23 @@ body {
     justify-content: space-between;
     flex-wrap: wrap;
     row-gap: 20px;
-    z-index: 2;
+}
+
+#current-file {
+    height: 100%;
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    margin-right: 10px;
 }
 
 .download-form {
     display: flex;
     flex-direction: column;
     row-gap: 5px;
+}
+
+.filters, .download-file {
+    z-index: 2;
 }
 
 .filters-open {

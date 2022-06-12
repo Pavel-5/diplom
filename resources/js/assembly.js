@@ -39,39 +39,47 @@ export default class Assembly {
     }
 
     encrypt(message) {
-        const {
-            __newString,
-            __getString,
-            __collect,
-            encrypt,
-        } = this.wasmModule.exports;
+        if (message) {
+            const {
+                __newString,
+                __getString,
+                __collect,
+                encrypt,
+            } = this.wasmModule.exports;
 
-        let result = __getString(encrypt(__newString(message), __newString(this.key)));
+            let result = __getString(encrypt(__newString(message), __newString(this.key)));
 
-        __collect();
+            __collect();
 
-        return result;
+            return result;
+        }
+
+        return '';
     }
 
     decrypt(encrypted) {
-        const {
-            __newString,
-            __getString,
-            __collect,
-            decrypt,
-        } = this.wasmModule.exports;
+        if (encrypted) {
+            const {
+                __newString,
+                __getString,
+                __collect,
+                decrypt,
+            } = this.wasmModule.exports;
 
-        let data = __getString(decrypt(__newString(encrypted), __newString(this.key)));
-        let decrypted = '';
+            let data = __getString(decrypt(__newString(encrypted), __newString(this.key)));
+            let decrypted = '';
 
-        for(let i = 0; i < data.length; i++) {
-            if (data.charCodeAt(i) !== 0) {
-                decrypted += data[i];
+            for (let i = 0; i < data.length; i++) {
+                if (data.charCodeAt(i) !== 0) {
+                    decrypted += data[i];
+                }
             }
+
+            __collect();
+
+            return decrypted;
         }
 
-        __collect();
-
-        return decrypted;
+        return '';
     }
 }

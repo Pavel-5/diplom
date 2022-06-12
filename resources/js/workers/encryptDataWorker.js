@@ -57,11 +57,6 @@ self.addEventListener('message', async function(e) {
     dataFetch.forEach((item) => {
         item = transformItemData(item, localStorage, assembly);
 
-        self.postMessage({
-            'action': 'tables',
-            'data': localStorage,
-        });
-
         for (let property in item) {
             if (item[property] !== "") {
                 item[property] = assembly.encrypt(item[property].toString());
@@ -74,6 +69,10 @@ self.addEventListener('message', async function(e) {
         let currentPercentDecrypted = 100 / dataFetch.length * data.length;
 
         if (currentPercentDecrypted >= percentInPart && data.length >= minCountPointsInPart) {
+            self.postMessage({
+                'action': 'tables',
+                'data': localStorage,
+            });
             self.postMessage({
                 'action': 'partData',
                 'key': 'DATA',
