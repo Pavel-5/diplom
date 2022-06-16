@@ -1,9 +1,9 @@
 import Assembly from "../assembly";
 
 function transformItemData(item, localStorage, assembly) {
-    let config = localStorage['DIPLOM_CONFIG'];
+    let config = localStorage[assembly.encrypt('DIPLOM_CONFIG')];
 
-    config.propertiesInSeparateTables.forEach((property) => {
+    config[assembly.encrypt('propertiesInSeparateTables')].forEach((property) => {
         localStorage[property] =
             localStorage.hasOwnProperty(property)
                 ? localStorage[property]
@@ -47,6 +47,7 @@ self.addEventListener('message', async function(e) {
     let key = e.data.key;
     let assembly = await Assembly.init(key);
 
+    let encryptProperties = {};
     let localStorage = e.data.localStorage;
     let data = [];
     let countEncryptedItemsData = 0;
@@ -58,9 +59,9 @@ self.addEventListener('message', async function(e) {
         item = transformItemData(item, localStorage, assembly);
 
         for (let property in item) {
-            if (item[property] !== "") {
-                item[property] = assembly.encrypt(item[property].toString());
-            }
+            item[property] = (item[property] !== "")
+                ? assembly.encrypt(item[property].toString())
+                : "";
         }
 
         data.push(item);

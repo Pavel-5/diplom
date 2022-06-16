@@ -150,8 +150,9 @@ export default class VisGraph3d {
             let keyLocalStorage = localStorage.getItem('currentKey');
             currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage));
         }
-        let config = currentObjectData['DIPLOM_CONFIG'];
         let assembly = await Assembly.init();
+        let configName = assembly.encrypt('DIPLOM_CONFIG');
+        let config = currentObjectData[configName];
 
         let formatDate = (value) => {
             return new Date(value).toLocaleDateString('ru', {
@@ -173,9 +174,12 @@ export default class VisGraph3d {
 
         let buildOptions = {};
 
-        config.coordinates.forEach((key) => {
-            if (config.propertiesInSeparateTables.includes(keys[key])) {
-                buildOptions[key + 'Step'] = 1;
+        let encryptCoordinates = assembly.encrypt('coordinates');
+        let encryptPropertiesInSeparateTables = assembly.encrypt('propertiesInSeparateTables');
+
+        config[encryptCoordinates].forEach((key) => {
+            if (config[encryptPropertiesInSeparateTables].includes(keys[key])) {
+                // buildOptions[key + 'Step'] = 1;
                 buildOptions[key + 'ValueLabel'] = (value) => {
                     return assembly.decrypt(currentObjectData[keys[key]][value]);
                 }
@@ -184,14 +188,14 @@ export default class VisGraph3d {
 
         buildOptions = {
             ...buildOptions,
-            xLabel: this.keys.x,
-            yLabel: this.keys.y,
-            zLabel: this.keys.z,
+            xLabel: assembly.decrypt(this.keys.x),
+            yLabel: assembly.decrypt(this.keys.y),
+            zLabel: assembly.decrypt(this.keys.z),
         };
 
         let tooltip = (point) => {
-            config.coordinates.forEach((key) => {
-                point[key + 'Value'] = (config.propertiesInSeparateTables.includes(keys[key]))
+            config[encryptCoordinates].forEach((key) => {
+                point[key + 'Value'] = (config[encryptPropertiesInSeparateTables].includes(keys[key]))
                     ? assembly.decrypt(currentObjectData[keys[key]][point[key]])
                     : point[key];
             });

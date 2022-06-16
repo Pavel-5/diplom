@@ -1,12 +1,13 @@
 import Assembly from "./assembly.js";
 import VisGraph3d from './graphs/vis-graph3d';
 import Config from './config/Config';
-import {awrap} from "../../public/js/three";
 
 let graph;
 let allData = [];
+let configName = '';
 let assembly;
-let keyLocalStorage = localStorage.getItem('currentKey') ?? '';
+let keyLocalStorage = '';
+// let currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage)) ?? {};
 let decryptedProperties = [];
 let decryptedTables = {};
 let isLoading = false;
@@ -15,12 +16,12 @@ function saveConfig(config) {
     let objConfig = {};
 
     for (let configKey in config) {
-        objConfig[configKey] = config[configKey];
+        objConfig[assembly.encrypt(configKey)] = config[configKey];
     }
 
     let currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage)) ?? {};
 
-    currentObjectData['DIPLOM_CONFIG'] = objConfig;
+    currentObjectData[assembly.encrypt('DIPLOM_CONFIG')] = objConfig;
 
     localStorage.setItem(keyLocalStorage, JSON.stringify(currentObjectData));
 }
@@ -67,19 +68,22 @@ async function run(data = []) {
     if (keyLocalStorage) {
         let currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage));
 
-        if (currentObjectData.hasOwnProperty('DIPLOM_CONFIG')) {
-            let config = currentObjectData['DIPLOM_CONFIG'];
+        configName = configName ? configName : assembly.encrypt('DIPLOM_CONFIG');
+
+        if (currentObjectData.hasOwnProperty(configName)) {
+            let config = currentObjectData[configName];
+            let allProperties = config[assembly.encrypt('allProperties')];
 
             let keys = {
-                x: config.allProperties[0],
-                y: config.allProperties[1],
-                z: config.allProperties[2],
+                x: allProperties[0],
+                y: allProperties[1],
+                z: allProperties[2],
             };
             let options = {
                 style: 'dot',
-                xLabel: config.allProperties[0],
-                yLabel: config.allProperties[1],
-                zLabel: config.allProperties[2],
+                xLabel: assembly.decrypt(allProperties[0]),
+                yLabel: assembly.decrypt(allProperties[1]),
+                zLabel: assembly.decrypt(allProperties[2]),
             };
 
             graph = new VisGraph3d(document.getElementById('container'), {
@@ -87,7 +91,7 @@ async function run(data = []) {
                 options: options,
             });
 
-            if (!currentObjectData['DATA']) {
+            if (!currentObjectData[assembly.encrypt('DATA')]) {
                 if (data.length > 0) {
                     changeProgressBar(0);
                     isLoading = true;
@@ -100,24 +104,26 @@ async function run(data = []) {
 
                         switch (e.data.action) {
                             case 'table':
-                                currentObjectData[key] = data;
+                                currentObjectData[assembly.encrypt(key)] = data;
 
                                 localStorage.setItem(keyLocalStorage, JSON.stringify(currentObjectData));
                                 break;
 
                             case 'tables':
-                                localStorage.setItem(keyLocalStorage, JSON.stringify(data));
+                                currentObjectData = {...currentObjectData, ...data};
+                                localStorage.setItem(keyLocalStorage, JSON.stringify(currentObjectData));
 
                                 break;
 
                             case 'partData':
-                                allData = currentObjectData[key]
-                                    ? currentObjectData[key]
+                                let encryptKey = assembly.encrypt(key);
+                                allData = currentObjectData[encryptKey]
+                                    ? currentObjectData[encryptKey]
                                     : [];
 
                                 allData.push(...data);
 
-                                currentObjectData[key] = allData;
+                                currentObjectData[encryptKey] = allData;
 
                                 localStorage.setItem(keyLocalStorage, JSON.stringify(currentObjectData));
 
@@ -128,7 +134,7 @@ async function run(data = []) {
                                     currentObjectData
                                 );
 
-                                // fillFilters();
+                                fillFilters();
 
                                 break;
 
@@ -162,19 +168,19 @@ async function run(data = []) {
                 }
             } else {
                 let paramKeys = [];
-                config.coordinates.forEach((coordinate) => {
+                config[assembly.encrypt('coordinates')].forEach((coordinate) => {
                     paramKeys.push(keys[coordinate]);
                 });
 
                 decryptData(
                     paramKeys,
-                    currentObjectData['DATA'],
+                    currentObjectData[assembly.encrypt('DATA')],
                     (data) => {
-                        // decryptedProperties.push(...paramKeys);
-                        // allData = data;
-                        graph.setData(data);
+                        decryptedProperties.push(...paramKeys);
+                        allData = data;
+                        graph.setParams(graph.keys, graph.options, data, currentObjectData);
 
-                        // fillFilters();
+                        fillFilters();
                     }
                 );
             }
@@ -218,12 +224,13 @@ function decryptAllData(data = []) {
 }
 
 function decryptData(keys = [], data = [], callback = (data) => {}) {
+    configName = configName ?? assembly.encrypt('DIPLOM_CONFIG');
     let currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage));
-    let config = currentObjectData['DIPLOM_CONFIG'];
+    let config = currentObjectData[configName];
     let worker = new Worker('js/workers/decryptDataWorker.js');
 
     data = data.length === 0
-        ? currentObjectData['DATA']
+        ? currentObjectData[assembly.encrypt('DATA')]
         : data;
 
     worker.addEventListener('message', async (e) => {
@@ -243,7 +250,7 @@ function decryptData(keys = [], data = [], callback = (data) => {}) {
     }, false);
 
     if (keys.length === 0) {
-        config.coordinates.forEach((coordinate) => {
+        config[assembly.encrypt('coordinates')].forEach((coordinate) => {
             keys.push(graph.keys[coordinate]);
         });
     }
@@ -292,7 +299,8 @@ function decryptedGraphData(keys = {}, data = []) {
 
 function fillFilters() {
     let currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage));
-    let config = currentObjectData['DIPLOM_CONFIG'];
+    configName = configName ? configName : assembly.encrypt('DIPLOM_CONFIG');
+    let config = currentObjectData[configName];
 
     let xSelect = document.getElementById('x');
     let ySelect = document.getElementById('y');
@@ -307,46 +315,49 @@ function fillFilters() {
     filterSelect.insertAdjacentHTML('beforeend', '<option value="none">-</option>');
     filterValues.textContent = '';
 
-    config.allProperties.forEach((property) => {
-        let option = `<option value="${property}" ${(graph.keys.x === property) ? 'selected' : ''}>${property}</option>`;
+    config[assembly.encrypt('allProperties')].forEach((encryptProperty) => {
+        let property = assembly.decrypt(encryptProperty);
+        let option = `<option value="${property}" ${(graph.keys.x === encryptProperty) ? 'selected' : ''}>${property}</option>`;
         xSelect.insertAdjacentHTML('beforeend', option);
 
-        option = `<option value="${property}" ${(graph.keys.y === property) ? 'selected' : ''}>${property}</option>`;
+        option = `<option value="${property}" ${(graph.keys.y === encryptProperty) ? 'selected' : ''}>${property}</option>`;
         ySelect.insertAdjacentHTML('beforeend', option);
 
-        option = `<option value="${property}" ${(graph.keys.z === property) ? 'selected' : ''}>${property}</option>`;
+        option = `<option value="${property}" ${(graph.keys.z === encryptProperty) ? 'selected' : ''}>${property}</option>`;
         zSelect.insertAdjacentHTML('beforeend', option);
 
-        if (config.propertiesInFilter.includes(property)) {
+        if (config[assembly.encrypt('propertiesInFilter')].includes(encryptProperty)) {
             option = `<option value="${property}">${property}</option>`;
             filterSelect.insertAdjacentHTML('beforeend', option);
 
+            let changedProperty = property.replaceAll(' ', '_');
+
             let block =
-                `<label class="filter-value" for="${property}">
-                        ${property} <select name="${property}" id="${property}"></select>
+                `<label class="filter-value" for="${changedProperty}">
+                        ${property} <select name="${changedProperty}" id="${changedProperty}"></select>
                     </label>`;
 
             filterValues.insertAdjacentHTML('beforeend', block);
 
-            let propertySelect = filterValues.querySelector('#' + property);
+            let propertySelect = filterValues.querySelector('#' + changedProperty);
 
-            let table = currentObjectData[property];
+            let table = currentObjectData[encryptProperty];
             let uniqueValues = [];
 
             if (table) {
-                decryptedTables[property] = decryptedTables[property] ?? table
+                decryptedTables[encryptProperty] = decryptedTables[encryptProperty] ?? table
                     .map((item) => assembly.decrypt(item));
 
-                uniqueValues = decryptedTables[property];
+                uniqueValues = decryptedTables[encryptProperty];
 
                 // decryptTable(JSON.parse(table), (data) => {
                 //     uniqueValues = data;
                 // });
             } else {
                 let values = decryptedGraphData({
-                    0: property,
+                    0: encryptProperty,
                 })
-                    .map((item) => item[property])
+                    .map((item) => item[encryptProperty])
                     .sort((a, b) => {
                         if (!isNaN(parseInt(a)) && !isNaN(parseInt(b)))
                             return a - b;
@@ -368,8 +379,14 @@ function fillFilters() {
 function fillFiles() {
     let select = document.querySelector('#current-file');
     for (let localStorageKey in localStorage) {
-        if (localStorageKey.match(/.csv$/g)) {
-            let option = `<option value="${localStorageKey}" ${(localStorageKey === localStorage.getItem('currentKey')) ? 'selected' : ''}>${localStorageKey}</option>`;
+        let decryptKey = assembly.decrypt(localStorageKey);
+        if (decryptKey.match(/.csv$/g)) {
+            if (!keyLocalStorage) {
+                keyLocalStorage = localStorageKey;
+                localStorage.setItem('currentKey', keyLocalStorage);
+            }
+
+            let option = `<option value="${decryptKey}" ${(localStorageKey === localStorage.getItem('currentKey')) ? 'selected' : ''}>${decryptKey}</option>`;
             select.insertAdjacentHTML('beforeend', option);
         }
     }
@@ -404,6 +421,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     fillFiles();
 
+    console.log(assembly.decrypt(keyLocalStorage));
+
     await run();
 
     document.querySelector('.filters-open')?.addEventListener('click', (e) => {
@@ -415,17 +434,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.stopPropagation();
 
         let currentObjectData = JSON.parse(localStorage.getItem(keyLocalStorage));
-        let config = currentObjectData['DIPLOM_CONFIG'];
+        configName = configName ? configName : assembly.encrypt('DIPLOM_CONFIG');
+        let config = currentObjectData[configName];
 
         let form = new FormData(document.querySelector('.filters-form'));
 
         let keys = {
-            x: form.get('x'),
-            y: form.get('y'),
-            z: form.get('z'),
+            x: assembly.encrypt(form.get('x')),
+            y: assembly.encrypt(form.get('y')),
+            z: assembly.encrypt(form.get('z')),
         };
         let options = {
             style: form.get('graph-type'),
+            xLabel: form.get('x'),
+            yLabel: form.get('y'),
+            zLabel: form.get('z'),
         };
 
         let filterName = form.get('filter-name');
@@ -433,9 +456,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         let data = [];
 
         if (filterName !== 'none') {
-            let filterValue = form.get(filterName);
+            let filterValue = form.get(filterName.replaceAll(' ', '_'));
+            filterName = assembly.encrypt(filterName);
 
-            if (config.propertiesInSeparateTables.includes(filterName)) {
+            if (config[assembly.encrypt('propertiesInSeparateTables')].includes(filterName)) {
                 let dataTable = decryptedTables[filterName] ?? currentObjectData[filterName]
                     .map((item) => assembly.decrypt(item));
                 let flagDecrypt = !decryptedProperties.includes(filterName);
@@ -500,9 +524,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 fileName = prompt('Введите название файла') + ".csv";
             }
 
-            keyLocalStorage = fileName;
+            keyLocalStorage = assembly.encrypt(fileName);
 
             localStorage.setItem('currentKey', keyLocalStorage);
+
+            let option = `<option value="${fileName}" selected>${fileName}</option>`;
+            document.querySelector('#current-file').insertAdjacentHTML('beforeend', option);
 
             formElem.querySelector('input[name=downloadedFile]').value = '';
 
@@ -514,7 +541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .split('\n')
                 .map((str) => str.split(','));
 
-            Config.allProperties = arrData.shift();
+            Config.allProperties = arrData.shift().map((property) => assembly.encrypt(property));
             Config.propertiesInSeparateTables = [];
 
             arrData = arrData.map((item, i) => {
@@ -565,17 +592,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         document
-            .getElementById(e.target.value)
+            .getElementById(e.target.value.replaceAll(' ', '_'))
             ?.closest('.filter-value')
             .classList.add('active');
     });
 
     document.querySelector('#current-file').addEventListener('change', async (e) => {
-        localStorage.setItem('currentKey', e.target.value);
+        keyLocalStorage = assembly.encrypt(e.target.value);
+
+        localStorage.setItem('currentKey', keyLocalStorage);
 
         decryptedTables = {};
         decryptedProperties = [];
         allData = [];
+
+        console.log('q11');
 
         await run();
     });
